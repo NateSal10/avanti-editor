@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avanti WordPress Editor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    color: #222;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header span { font-size: 13px; color: #aaa; }
+
+  .main {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    align-items: flex-start;
+  }
+
+  .panel {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    padding: 16px;
+  }
+
+  .panel-input { flex: 1 1 0; display: flex; flex-direction: column; gap: 10px; }
+  .panel-settings { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; }
+
+  label.section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #888;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  textarea {
+    width: 100%;
+    height: 380px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    resize: vertical;
+    color: #333;
+  }
+  textarea:focus { outline: none; border-color: #4a90d9; }
+
+  textarea#output {
+    background: #f8f9fa;
+    height: 200px;
+  }
+
+  .btn {
+    padding: 9px 18px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn-primary { background: #1a1a2e; color: #fff; }
+  .btn-success { background: #00875a; color: #fff; }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid #ccc;
+    color: #444;
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+  .btn-copy { background: #4a90d9; color: #fff; }
+  .btn-danger {
+    background: transparent;
+    border: none;
+    color: #c00;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+  }
+
+  .section-divider {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 2px 0;
+  }
+
+  .replace-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .replace-row input[type="text"] {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 13px;
+  }
+  .replace-row input[type="text"]:focus { outline: none; border-color: #4a90d9; }
+  .replace-arrow { color: #999; font-size: 14px; flex-shrink: 0; }
+
+  #color-rows { display: flex; flex-direction: column; gap: 8px; }
+
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 7px 10px;
+  }
+  .swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.15);
+    flex-shrink: 0;
+  }
+  .color-hex { font-family: monospace; font-size: 12px; color: #555; flex: 1; }
+  .color-arrow { color: #aaa; font-size: 14px; }
+  input[type="color"] {
+    width: 36px;
+    height: 28px;
+    padding: 1px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background: #fff;
+  }
+
+  .output-section {
+    padding: 0 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .empty-state {
+    color: #aaa;
+    font-size: 13px;
+    font-style: italic;
+    padding: 8px 0;
+  }
+
+  .row-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+
+  .status-bar {
+    background: #e8f5e9;
+    color: #2e7d32;
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    display: none;
+    margin: 0 16px 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Avanti WordPress Editor</h1>
+  <span>Monthly page updater — paste HTML, configure changes, copy result</span>
+</header>
+
+<div class="main">
+  <!-- Left: HTML input -->
+  <div class="panel panel-input">
+    <label class="section-label">Paste WordPress HTML</label>
+    <textarea id="input" placeholder="Paste your WordPress page HTML here, then click Scan HTML..."></textarea>
+    <button class="btn btn-primary" onclick="scanHTML()">Scan HTML</button>
+  </div>
+
+  <!-- Right: Settings -->
+  <div class="panel panel-settings">
+
+    <!-- Text replacements -->
+    <div>
+      <label class="section-label">Text Replacements</label>
+      <div id="replace-rows"></div>
+      <div class="row-actions">
+        <button class="btn btn-outline" onclick="addReplaceRow('', '')">+ Add Row</button>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Colors -->
+    <div>
+      <label class="section-label">Colors Detected</label>
+      <div id="color-rows">
+        <p class="empty-state">Paste HTML and click "Scan HTML" to detect colors.</p>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <button class="btn btn-success" onclick="processHTML()">Process &amp; Update HTML</button>
+  </div>
+</div>
+
+<div id="status" class="status-bar"></div>
+
+<!-- Output -->
+<div class="output-section">
+  <div class="output-header">
+    <label class="section-label" style="margin:0">Updated HTML Output</label>
+    <button class="btn btn-copy" onclick="copyOutput()">Copy to Clipboard</button>
+  </div>
+  <textarea id="output" readonly placeholder="Updated HTML will appear here after clicking Process & Update HTML..."></textarea>
+</div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────────
+  let detectedColors = []; // [{original, normalized}]
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  addReplaceRow('', '');
+  addReplaceRow('', '');
+
+  // ── Text replacement rows ─────────────────────────────────────────────────
+  function addReplaceRow(find, replace) {
+    const container = document.getElementById('replace-rows');
+    const row = document.createElement('div');
+    row.className = 'replace-row';
+    row.innerHTML = `
+      <input type="text" placeholder="Find…" value="${escAttr(find)}">
+      <span class="replace-arrow">→</span>
+      <input type="text" placeholder="Replace with…" value="${escAttr(replace)}">
+      <button class="btn-danger" title="Remove row" onclick="this.parentElement.remove()">×</button>
+    `;
+    container.appendChild(row);
+  }
+
+  function escAttr(str) {
+    return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  // ── Scan HTML ─────────────────────────────────────────────────────────────
+  function scanHTML() {
+    const html = document.getElementById('input').value;
+    if (!html.trim()) { showStatus('Paste some HTML first.', 'warn'); return; }
+
+    // Match color:#XXXXXX or color: #XXXXXX (3 or 6 digit hex, upper or lower)
+    const colorRegex = /(?<![a-zA-Z\-])color\s*:\s*#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b/g;
+    const seen = new Map();
+    let m;
+    while ((m = colorRegex.exec(html)) !== null) {
+      const full = m[0];           // e.g. "color:#FF6900"
+      const hex  = m[1].toUpperCase();
+      const normalized = '#' + (hex.length === 3
+        ? hex.split('').map(c=>c+c).join('')
+        : hex);
+      if (!seen.has(normalized)) seen.set(normalized, full);
+    }
+
+    detectedColors = Array.from(seen.entries()).map(([normalized, original]) => ({
+      original,   // exact text found in HTML
+      normalized  // #RRGGBB uppercase
+    }));
+
+    renderColorRows();
+    showStatus(`Found ${detectedColors.length} color(s). Configure replacements below.`, 'ok');
+  }
+
+  function renderColorRows() {
+    const container = document.getElementById('color-rows');
+    if (detectedColors.length === 0) {
+      container.innerHTML = '<p class="empty-state">No inline colors found in the HTML.</p>';
+      return;
+    }
+    container.innerHTML = '';
+    detectedColors.forEach(({ normalized }, i) => {
+      const row = document.createElement('div');
+      row.className = 'color-row';
+      row.innerHTML = `
+        <div class="swatch" style="background:${normalized}"></div>
+        <span class="color-hex">${normalized}</span>
+        <span class="color-arrow">→</span>
+        <input type="color" id="color-new-${i}" value="${normalized}" title="Pick new color">
+      `;
+      container.appendChild(row);
+    });
+  }
+
+  // ── Process HTML ──────────────────────────────────────────────────────────
+  function processHTML() {
+    let html = document.getElementById('input').value;
+    if (!html.trim()) { showStatus('Paste some HTML first.', 'warn'); return; }
+
+    let changeCount = 0;
+
+    // 1. Text replacements
+    const rows = document.querySelectorAll('#replace-rows .replace-row');
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input[type="text"]');
+      const find    = inputs[0].value;
+      const replace = inputs[1].value;
+      if (find) {
+        const before = html;
+        html = html.split(find).join(replace); // replaceAll equivalent
+        if (html !== before) changeCount++;
+      }
+    });
+
+    // 2. Color replacements
+    detectedColors.forEach(({ original, normalized }, i) => {
+      const picker = document.getElementById(`color-new-${i}`);
+      if (!picker) return;
+      const newColor = picker.value.toUpperCase(); // #RRGGBB
+      if (newColor === normalized) return; // unchanged
+
+      // Replace the exact original pattern found in the HTML
+      // Also handle any case variation in the hex digits
+      const oldHex = normalized.slice(1); // strip #
+      const escapedOriginal = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Build a regex that catches both the exact match and any same-color variants
+      const colorPart = new RegExp('(?<![a-zA-Z\\-])color\\s*:\\s*#' + oldHex, 'gi');
+      const before = html;
+      html = html.replace(colorPart, () => {
+        // Preserve original spacing style (e.g. "color:#" vs "color: #")
+        return original.replace(/#[0-9A-Fa-f]{3,6}/, newColor);
+      });
+      if (html !== before) changeCount++;
+    });
+
+    document.getElementById('output').value = html;
+    showStatus(`Done! Applied changes. ${changeCount} type(s) of replacement made.`, 'ok');
+  }
+
+  // ── Copy output ───────────────────────────────────────────────────────────
+  function copyOutput() {
+    const out = document.getElementById('output').value;
+    if (!out.trim()) { showStatus('Nothing to copy yet — process the HTML first.', 'warn'); return; }
+    navigator.clipboard.writeText(out).then(() => {
+      const btn = document.querySelector('.btn-copy');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
+    });
+  }
+
+  // ── Status bar ────────────────────────────────────────────────────────────
+  function showStatus(msg, type) {
+    const bar = document.getElementById('status');
+    bar.textContent = msg;
+    bar.style.display = 'block';
+    bar.style.background = type === 'warn' ? '#fff3e0' : '#e8f5e9';
+    bar.style.color      = type === 'warn' ? '#e65100' : '#2e7d32';
+    clearTimeout(bar._timer);
+    bar._timer = setTimeout(() => bar.style.display = 'none', 4000);
+  }
+</script>
+</body>
+</html>
